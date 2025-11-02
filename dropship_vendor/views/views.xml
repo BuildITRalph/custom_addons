@@ -1,0 +1,30 @@
+<odoo>
+    <!-- Tree View -->
+    <record id="view_preferred_vendor_tree" model="ir.ui.view">
+        <field name="name">preferred.vendor.tree</field>
+        <field name="model">preferred.vendor</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="name"/>
+                <field name="customer_ids" widget="many2many_tags"/>
+                <field name="product_ids" widget="many2many_tags"/>
+                <field name="vendor_id"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_preferred_vendor" model="ir.actions.act_window">
+        <field name="name">Preferred Vendors</field>
+        <field name="res_model">preferred.vendor</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_preferred_vendor_tree"/>
+    </record>
+
+    <!-- Menu Item under Sales -->
+    <menuitem id="menu_preferred_vendor_root"
+              name="Preferred Vendors"
+              parent="sale.sale_order_menu"
+              action="action_preferred_vendor"
+              sequence="50"/>
+</odoo>
