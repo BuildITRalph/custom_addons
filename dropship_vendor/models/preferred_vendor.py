@@ -26,36 +26,47 @@ class PreferredVendor(models.Model):
         'preferred_vendor_id',            # this model column
         'product_id',                     # product column
         string='Products',
-        help="Products this vendor is preferred for."
+        help="Products this vendor is preferred for (only dropship-enabled products)."
     )
 
     vendor_id = fields.Many2one(
         'res.partner',
         string='Preferred Vendor',
         required=True,
-        domain=[('supplier_rank', '>', 0)],
+        domain=lambda self: self._get_unused_vendor_domain(),
         help="The vendor to be used instead of supplierinfo for these products/customers."
     )
+
 
     active = fields.Boolean(default=True)
     note = fields.Char(string='Notes')
 
-    _sql_constraints = [
-        ('vendor_unique_constraint',
-         'unique(vendor_id)',
-         'Each vendor should have only one preferred vendor record.')
-    ]
-
-    @api.depends('customer_ids', 'product_ids')
-    def _compute_name(self):
+    @api.constrains('vendor_id')
+    def _check_unique_vendor(self):
         for record in self:
-            customer_names = ', '.join(record.customer_ids.mapped('name'))
-            product_names = ', '.join(record.product_ids.mapped('name'))
-            if customer_names and product_names:
-                record.name = f"{customer_names} → {product_names}"
-            elif customer_names:
-                record.name = f"{customer_names} → (No Product)"
-            elif product_names:
-                record.name = f"(No Customer) → {product_names}"
-            else:
-                record.name = "(Unspecified)"
+            # Check if any other record has the same vendor
+            existing = self.search([('vendor_id', '=', record.vendor_id.id), ('id', '!=', record.id)])
+            if existing:
+                raise ValidationError('Each vendor should have only one preferred vendor record.')
+
+    # ✅ Dynamically limit products to those with the Dropship route
+    @api.model
+    def fields_get(self, allfields=None, attributes=None):
+        """Add a domain to product_ids: only products with dropship route."""
+        res = super().fields_get(allfields, attributes)
+        if 'product_ids' in res:
+            try:
+                dropship_route = self.env.ref('stock_dropshipping.route_drop_shipping')
+                res['product_ids']['domain'] = [('route_ids', 'in', [dropship_route.id])]
+            except Exception:
+                # skip if the stock_dropshipping module isn't installed
+                pass
+        return res
+    
+    def _get_unused_vendor_domain(self):
+        """Return a domain for vendor_id showing only unused vendors,
+        but include the vendor already assigned to this record (if any)."""
+        used_vendor_ids = self.search([('id', '!=', self.id)]).mapped('vendor_id').ids
+        domain = [('supplier_rank', '>', 0), ('id', 'not in', used_vendor_ids)]
+        return domain
+

@@ -24,7 +24,7 @@
     <!-- Menu Item under Sales/Order -->
     <menuitem id="menu_preferred_vendor_root"
               name="Preferred Vendors"
-              parent="sale.sale_order_menu"
+              parent="sale.menu_sales_config"
               action="action_preferred_vendor"
               sequence="50"/>
 </odoo>

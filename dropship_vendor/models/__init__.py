@@ -1,1 +1,2 @@
-from . import preferred_vendor
+from . import preferred_vendor,stock_rule
+
